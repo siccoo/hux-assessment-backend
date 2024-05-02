@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 require('dotenv').config();
 
-exports.signup = async (req, res) => {
+const signup = async (req, res) => {
     const { username, password } = req.body;
 
     // Validate request
@@ -32,4 +32,35 @@ exports.signup = async (req, res) => {
         console.error(error.message);
         res.status(500).json({ message: 'Server error' });
     }
+};
+
+const login = async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        // Check if user with the given username exists
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Compare the provided password with the hashed password stored in the database
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: 'Invalid password' });
+        }
+
+        // If the password is valid, generate a JWT token
+        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        res.status(200).json({ token });
+    } catch (error) {
+        console.error('Login failed:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+module.exports = {
+    signup,
+    login,
 };
